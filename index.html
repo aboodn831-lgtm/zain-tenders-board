@@ -1,0 +1,857 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>لوحة مناقصات إسناد · Zain Solutions</title>
+<style>
+  /* Stand-in for the tokens the claude.ai dashboard host provides, so the same page runs on a static site. */
+  :root {
+    --color-bg: #ffffff; --color-fg: #231f20; --color-fg-muted: #6b6a6c; --color-panel: #f7f7f8;
+    --color-border-line: #e3e2e4; --color-ok: #2f7d4f; --color-warn: #b35c00; --color-bad: #bb2333;
+    --cds-text-secondary: #6b6a6c; --cds-surface-popover: #ffffff; --cds-border: #e3e2e4;
+    --cds-shadow-popover: 0 6px 24px rgba(0,0,0,.12); --cds-chart-grid: #ececee;
+    --cds-font-size-caption: 13px; --cds-font-size-body: 15px; --cds-font-size-heading: 17px; --cds-font-size-title: 30px;
+    --cds-font-weight-medium: 500; --cds-radius: 10px; --cds-dur-slow: .3s;
+    --cds-pad-xs: 4px; --cds-pad-sm: 8px; --cds-pad-md: 12px; --cds-pad-lg: 16px; --cds-pad-xl: 24px;
+    --cds-gap-xs: 4px; --cds-gap-sm: 8px; --cds-gap-md: 12px; --cds-gap-lg: 20px;
+    --font-anthropic-sans: system-ui, -apple-system, "Segoe UI", Tahoma, sans-serif;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --color-bg: #161415; --color-fg: #f1f1f2; --color-fg-muted: #a3a3a5; --color-panel: #1f1d1e;
+      --color-border-line: #343133; --color-ok: #5cc28a; --color-warn: #f0a04b; --color-bad: #e0525f;
+      --cds-text-secondary: #a3a3a5; --cds-surface-popover: #262324; --cds-border: #3a3739;
+      --cds-shadow-popover: 0 6px 24px rgba(0,0,0,.5); --cds-chart-grid: #2c2a2b;
+      color-scheme: dark;
+    }
+  }
+  html, body { margin: 0; background: var(--color-bg); color: var(--color-fg); }
+  #dash-root { max-width: 1280px; margin-inline: auto; box-sizing: border-box;
+    padding-block: 20px 40px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  .dash-skeleton { color: transparent !important; background: var(--color-border-line); border-radius: 6px; }
+  .tz-footer { margin-top: 24px; color: var(--color-fg-muted); font-size: 12px; text-align: center; }
+</style>
+<script src="d3.min.js"></script>  <!-- d3 7.9.0, shipped with the site (no outside dependency) -->
+<script>
+  // Minimal stand-in for the claude.ai dashboard runtime (`dash`): datasets from data/*.json,
+  // calculations, filters and redraw callbacks. Enough for this page only.
+  window.TZ_STANDALONE = true;  // the public site: file downloads are allowed here
+  window.TZ_FAV_URL = "";  // shared favorites sheet (Google Apps Script web app); "" = not set up
+  window.dash = (() => {
+    const DEFAULTS = {"division": "", "scope": "matched", "service": "", "fit": "", "priority": "", "sale": "", "grade": "", "q": ""};
+    const state = {}, calcs = {}, callbacks = [];
+    let params = { ...DEFAULTS };
+    const run = () => {
+      for (const [id, c] of Object.entries(calcs)) {
+        const ins = c.inputs.map((i) => state[i]);
+        state[id] = ins.every((x) => x && x.status === 'ok')
+          ? { status: 'ok', data: c.fn(...ins.map((x) => x.data)) }
+          : { status: ins.some((x) => x && x.status === 'error') ? 'error' : 'loading', data: [] };
+      }
+      callbacks.forEach((f) => { try { f(); } catch (e) { console.error(e); } });
+    };
+    const load = (id, url) => fetch(url, { cache: 'no-cache' })
+      .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
+      .then((data) => { state[id] = { status: 'ok', data }; })
+      .catch(() => { state[id] = { status: 'error', data: [] }; });
+    addEventListener('load', () => {
+      Promise.all([load('tenders', 'data/tenders.json'), load('status', 'data/status.json')]).then(run);
+      let t; addEventListener('resize', () => { clearTimeout(t); t = setTimeout(run, 150); });
+    });
+    return {
+      data: (id) => state[id] || { status: 'loading', data: [] },
+      onData: (f) => { callbacks.push(f); try { f(); } catch (e) { console.error(e); } },
+      calc: (id, c) => { calcs[id] = c; },
+      params: () => params,
+      setParams: (p) => { params = { ...params, ...p }; run(); },
+      resetParams: () => { params = { ...DEFAULTS }; run(); },
+      colors: ['#bb2333', '#838385', '#231f20', '#e0525f', '#a3a3a5', '#6b6a6c', '#f0a04b', '#2f7d4f'],
+    };
+  })();
+</script>
+</head>
+<body>
+<div id="dash-root">
+<link rel="stylesheet" href="brand.css">
+<div class="tz" dir="rtl">
+  <style>
+    /* Zain Solutions identity: brand red, charcoal and grey from the logo; Neo Sans W23. */
+    .tz { --zs-ink: #231F20; --zs-accent: #BB2333; --zs-gold: #838385; --zs-band-fg: #F1F1F2; --zs-tint: rgba(187, 35, 51, .06);
+      --zs-font: 'Neo Sans W23', var(--font-anthropic-sans);
+      font-family: var(--zs-font); font-weight: 300; display: grid; gap: var(--cds-gap-lg); }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) .tz { --zs-ink: #231F20; --zs-accent: #E0525F; --zs-gold: #A3A3A5; --zs-band-fg: #F1F1F2; --zs-tint: rgba(224, 82, 95, .12); }
+    }
+    :root[data-theme="dark"] .tz { --zs-ink: #231F20; --zs-accent: #E0525F; --zs-gold: #A3A3A5; --zs-band-fg: #F1F1F2; --zs-tint: rgba(224, 82, 95, .12); }
+    .tz b, .tz strong, .tz h2, .tz-table th { font-weight: 500; }
+    .tz-controls input, .tz-controls select, .tz-controls button { font-family: var(--zs-font); }
+    .tz-logo { width: 4.25rem; height: auto; flex: none; }
+    .tz-head { display: grid; gap: var(--cds-gap-sm); }
+    .tz-band { background: var(--zs-ink); color: var(--zs-band-fg); border-radius: var(--cds-radius); padding: var(--cds-pad-lg) var(--cds-pad-xl);
+      display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--cds-gap-md); border-bottom: 3px solid #BB2333; }
+    .tz-band .brand { display: flex; align-items: center; gap: var(--cds-gap-md); }
+    .tz-band .names { display: grid; gap: 2px; }
+    .tz-band .mark { font-size: var(--cds-font-size-caption); letter-spacing: .12em; text-transform: uppercase; color: #A3A3A5; direction: ltr; text-align: start; }
+    .tz-band .tag { font-size: var(--cds-font-size-caption); opacity: .85; }
+    .tz-chips { flex: 1 1 100%; display: flex; flex-wrap: wrap; gap: var(--cds-gap-sm); padding-top: var(--cds-pad-md);
+      border-top: 1px solid rgba(255,255,255,.12); font-size: var(--cds-font-size-caption); }
+    .tz-chips .chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 999px;
+      background: rgba(255,255,255,.08); color: #D6D6D8; white-space: nowrap; }
+    .tz-chips .chip b { color: #FFFFFF; font-weight: 500; font-variant-numeric: tabular-nums; }
+    .tz-chips .chip small { color: #A3A3A5; font-size: inherit; }
+    .tz-chips .dot { width: 8px; height: 8px; border-radius: 50%; background: #A3A3A5; flex: none; }
+    .tz-chips .dot.ok { background: #5CC28A; }
+    .tz-chips .dot.warn { background: #F0A04B; }
+    .tz-chips .dot.bad { background: #E0525F; }
+    .tz-title { font-family: var(--zs-font); font-weight: 700; font-size: var(--cds-font-size-title); margin: 0; text-wrap: balance; color: var(--zs-band-fg); }
+    .tz-note { border: 1px solid var(--color-border-line); background: var(--color-panel); border-radius: var(--cds-radius);
+      padding: var(--cds-pad-sm) var(--cds-pad-md); font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+    .tz-note strong { color: var(--color-warn); font-weight: 600; }
+    .tz-guide { color: var(--color-fg); font-size: var(--cds-font-size-caption); line-height: 1.7; }
+    .tz-guide { padding: var(--cds-pad-md) var(--cds-pad-lg); }
+    .tz-guide summary { cursor: pointer; font-weight: 500; color: var(--color-fg); list-style-position: inside; }
+    .tz-guide ul { display: block; columns: 2 22rem; column-gap: var(--cds-gap-lg); margin: var(--cds-gap-sm) 0 0; padding-inline-start: 1.2rem; }
+    .tz-guide li { margin-bottom: 4px; }
+    .tz-guide li { break-inside: avoid; }
+    .tz-guide summary::marker { color: var(--zs-accent); }
+    .tz-guide b { font-weight: 500; }
+    .tz-divs { display: flex; gap: 6px; padding: 4px; border-radius: 999px; background: var(--color-panel);
+      border: 1px solid var(--color-border-line); overflow-x: auto; scrollbar-width: none; }
+    .tz-divs::-webkit-scrollbar { display: none; }
+    .tz-divs button { flex: 1 0 auto; font: inherit; font-family: var(--zs-font); font-size: var(--cds-font-size-body); font-weight: 500;
+      padding: 8px 16px; border: 0; border-radius: 999px; background: transparent; color: var(--color-fg-muted); cursor: pointer; white-space: nowrap; }
+    .tz-divs button .c { display: inline-block; min-width: 1.6em; margin-inline-start: 6px; padding: 0 6px; border-radius: 999px;
+      font-size: var(--cds-font-size-caption); background: var(--color-border-line); color: var(--color-fg); }
+    .tz-divs button[aria-pressed="true"] { background: var(--zs-ink); color: #FFFFFF; }
+    .tz-divs button[aria-pressed="true"] .c { background: var(--zs-accent); color: #FFFFFF; }
+    .tz-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 9.5rem), 1fr)); gap: var(--cds-gap-md); }
+    .tz-tile { background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius);
+      border-inline-start: 4px solid var(--zs-gold); padding: var(--cds-pad-md) var(--cds-pad-lg); display: grid; gap: 2px; align-content: start; }
+    .tz-tile .lbl { color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); }
+    .tz-tile .num { font-family: var(--zs-font); font-weight: 500; font-size: var(--cds-font-size-title); font-variant-numeric: tabular-nums; min-height: 1.3em; }
+    .tz-tile .sub { color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); }
+    .tz-tile.key { background: var(--zs-tint); border-color: var(--zs-accent); border-inline-start-color: var(--zs-accent); }
+    .tz-tile.key .num { color: var(--zs-accent); }
+    .tz-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr)); gap: var(--cds-gap-md); }
+    .tz-card { background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius);
+      padding: var(--cds-pad-lg); display: grid; gap: var(--cds-gap-sm); align-content: start; min-width: 0; }
+    .tz-card h2 { margin: 0; font-size: var(--cds-font-size-heading); font-weight: var(--cds-font-weight-medium); }
+    .tz-card .note { margin: 0; color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); }
+    .tz-chart { position: relative; min-height: 200px; }
+    .tz-tip { position: absolute; pointer-events: none; background: var(--cds-surface-popover); border: 1px solid var(--cds-border);
+      border-radius: var(--cds-radius); box-shadow: var(--cds-shadow-popover); padding: var(--cds-pad-xs) var(--cds-pad-sm);
+      font-size: var(--cds-font-size-caption); white-space: nowrap; }
+    .tz-tip .k { color: var(--cds-text-secondary); }
+    .tz-controls { display: flex; flex-wrap: wrap; gap: var(--cds-gap-sm); align-items: center; }
+    .tz-controls input, .tz-controls select { font: inherit; font-size: var(--cds-font-size-body); padding: var(--cds-pad-xs) var(--cds-pad-sm);
+      border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); background: var(--color-bg); color: var(--color-fg); min-width: 0; }
+    .tz-controls input { flex: 1 1 14rem; }
+    .tz-controls button { font: inherit; font-size: var(--cds-font-size-caption); padding: var(--cds-pad-xs) var(--cds-pad-sm);
+      border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); background: transparent; color: var(--color-fg); cursor: pointer; }
+    .tz-count { color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); }
+    .tz-tablebox { max-height: 36rem; overflow: auto; border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); }
+    .tz-table { width: 100%; border-collapse: collapse; font-size: var(--cds-font-size-caption); font-variant-numeric: tabular-nums; }
+    .tz-table th { position: sticky; top: 0; background: var(--color-panel); text-align: start; font-weight: 600;
+      border-bottom: 1px solid var(--color-border-line); padding: 0; white-space: nowrap; z-index: 1; }
+    .tz-table th button { all: unset; cursor: pointer; display: block; padding: var(--cds-pad-xs) var(--cds-pad-sm); }
+    .tz-table th button:focus-visible { outline: 2px solid var(--color-fg); }
+    .tz-table td { padding: var(--cds-pad-xs) var(--cds-pad-sm); border-bottom: 1px solid var(--color-border-line); vertical-align: top; }
+    .tz-table td.t { min-width: 16rem; max-width: 30rem; }
+    .tz-table td.e { min-width: 9rem; }
+    .tz-table td.s { color: var(--zs-accent); min-width: 9rem; }
+    .tz-table td.n a { color: inherit; text-decoration: underline; text-underline-offset: 2px; white-space: nowrap; }
+    .tz-table td.d { white-space: nowrap; }
+    .tz-table tr.match td:first-child { box-shadow: inset -3px 0 0 var(--zs-gold); }
+    /* Priority colours (owner decision): one red, three strengths. The legend above the table uses the same tokens. */
+    .tz { --zs-p-top: #BB2333; --zs-p-high: #E0707B; --zs-p-normal: #F2C4C9;
+      --zs-p-top-bg: rgba(187, 35, 51, .16); --zs-p-high-bg: rgba(187, 35, 51, .07); --zs-p-normal-bg: transparent; }
+    .tz-table tr.p-top td { background: var(--zs-p-top-bg); }
+    .tz-table tr.p-high td { background: var(--zs-p-high-bg); }
+    .tz-table tr.p-top td:first-child { box-shadow: inset -5px 0 0 var(--zs-p-top); }
+    .tz-table tr.p-high td:first-child { box-shadow: inset -5px 0 0 var(--zs-p-high); }
+    .tz-table tr.p-normal td:first-child { box-shadow: inset -5px 0 0 var(--zs-p-normal); }
+    .tz-legend { display: flex; flex-wrap: wrap; align-items: center; gap: var(--cds-gap-sm) var(--cds-gap-lg);
+      font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+    .tz-legend .item { display: inline-flex; align-items: center; gap: 6px; color: var(--color-fg); }
+    .tz-legend .sw { width: 1.6rem; height: 1rem; border-radius: 4px; border-inline-start: 5px solid; }
+    .tz-legend .sw.top { background: var(--zs-p-top-bg); border-color: var(--zs-p-top); }
+    .tz-legend .sw.high { background: var(--zs-p-high-bg); border-color: var(--zs-p-high); }
+    .tz-legend .sw.normal { background: var(--color-bg); border-color: var(--zs-p-normal); outline: 1px solid var(--color-border-line); outline-offset: -1px; }
+    .tz-table td.f { white-space: nowrap; }
+    .tz-table tr.new td.f { color: var(--zs-accent); font-weight: 500; }
+    .tz-fail { display: flex; align-items: center; justify-content: center; gap: var(--cds-gap-xs); min-height: 200px;
+      color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); }
+    .tz-fail::before { content: ""; width: .375rem; height: .375rem; border-radius: 50%; background: var(--color-bad); }
+    .tz-empty { margin: 0; color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); }
+    .tz-select { display: flex; flex-wrap: wrap; gap: var(--cds-gap-sm); align-items: center; padding: var(--cds-pad-sm) var(--cds-pad-md);
+      border: 1px dashed var(--color-border-line); border-radius: var(--cds-radius); font-size: var(--cds-font-size-caption); }
+    .tz-select.on { border-style: solid; border-color: var(--zs-accent); background: var(--zs-tint); }
+    .tz-select b { font-weight: 500; }
+    .tz-select button { font: inherit; font-family: var(--zs-font); padding: var(--cds-pad-xs) var(--cds-pad-md); cursor: pointer;
+      border-radius: var(--cds-radius); border: 1px solid var(--color-border-line); background: var(--color-bg); color: var(--color-fg); }
+    .tz-select button.primary { background: var(--zs-accent); border-color: var(--zs-accent); color: #fff; }
+    .tz-select button:disabled { opacity: .45; cursor: default; }
+    .tz-select .msg { color: var(--color-ok); }
+    .tz-copybox { width: 100%; min-height: 8rem; font: inherit; font-size: var(--cds-font-size-caption); direction: rtl;
+      border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); background: var(--color-bg); color: var(--color-fg); padding: var(--cds-pad-sm); box-sizing: border-box; }
+    .tz-table th.sel, .tz-table td.sel { width: 2rem; text-align: center; padding-inline: var(--cds-pad-xs); }
+    .tz-table input[type=checkbox] { width: 1.05rem; height: 1.05rem; accent-color: var(--zs-accent); cursor: pointer; }
+    .tz-table tr.picked td { background: rgba(131, 131, 133, .22); }  /* grey, so a selected row is not read as a priority colour */
+    .tz-star { border: 0; background: none; padding: 0; margin-inline-end: 6px; font-size: 1.1em; line-height: 1;
+      cursor: pointer; color: var(--color-fg-muted); vertical-align: -1px; }
+    .tz-star.on { color: inherit; }
+    .tz-table td.st-open { color: var(--color-ok); white-space: nowrap; }
+    .tz-table td.st-ended { color: var(--color-warn); white-space: nowrap; }
+
+    /* Phones: a more compact header, tiles and division switcher. The tenders table stays as it is. */
+    @media (max-width: 720px) {
+      .tz-band { padding: var(--cds-pad-md) var(--cds-pad-lg); }
+      .tz-band .tag { display: none; }
+      .tz-chips { gap: 6px; padding-top: var(--cds-pad-sm); }
+      .tz-chips .chip { padding: 3px 10px; }
+      .tz-divs { display: grid; grid-template-columns: 1fr 1fr; border-radius: var(--cds-radius); }
+      .tz-divs button { padding: 8px 10px; border-radius: calc(var(--cds-radius) - 3px); font-size: var(--cds-font-size-caption); }
+      .tz-logo { width: 3.2rem; }
+      .tz-title { font-size: 22px; }
+      .tz-tile { padding: var(--cds-pad-sm) var(--cds-pad-md); }
+      .tz-tile .num { font-size: 26px; }
+      .tz-tile .sub { display: none; }
+      .tz-card { padding: var(--cds-pad-md); }
+    }
+    [data-dash-source-state=empty] { color: transparent; }
+    [data-dash-source-state=refreshing] { opacity: .5; transition: opacity var(--cds-dur-slow); }
+  </style>
+
+  <header class="tz-head" id="top">
+    <div class="tz-band">
+      <div class="brand">
+        <svg class="tz-logo" viewBox="42 45 130 116" role="img" aria-label="Zain Solutions"><g> <g> <g> <path fill="#bb2333" d="m61.03,65.47c-.26.16-.58.28-.83,0-.25-.27-.09-.57.06-.83l4.12-3.27c6.77-4.77,14.04-8.64,22-10.9,23.11-6.6,43.87-2.17,61.9,13.92,8.74,7.8,14.58,17.52,18.29,28.58.62,1.85.52,1.97-1.4,1.97-2.53,0-5.07,0-7.6.02-.85,0-1.4-.24-1.78-1.07-4.06-8.89-9.88-16.46-17.34-22.77-.07-.06-.11-.17-.17-.25-3.03-2.16-5.93-4.51-9.13-6.45-2.67-1.62-5.52-2.88-8.23-4.42h0s0,0,0,0h0s0,0,.02,0c-1.07-.26-2.09-.64-3.03-1.23,0,0,0,0,0,0h0s0,0,0,0c-3.94-1.11-7.82-2.41-11.89-3.04-11.36-1.74-32.04,1.29-44.97,9.75Z"/> <polygon fill="#bb2333" points="117.89 58.76 117.88 58.76 117.89 58.76 117.89 58.76"/> <path fill="#bb2333" d="m120.92,59.99s0,0-.02,0h0s0,0,0,0Z"/> <path fill="#828284" d="m68.34,129.66c.96.07,1.55.56,2.15,1,8.7,6.42,18.54,9.23,29.28,9.38,18.03.26,33.7-5.81,47.31-17.45,2.9-2.48,5.3-5.44,7.31-8.68.66-1.06,1.42-1.4,2.6-1.37,2.83.06,5.67,0,8.51.02,1.51,0,1.64.19.94,1.56-3.3,6.4-7.57,12.09-12.76,17.07-7.55,7.25-16.27,12.5-26.45,15.16-13.68,3.58-26.98,2.38-39.89-3.34-6.3-2.79-11.97-6.57-17.35-10.82-.79-.62-1.59-1.26-1.66-2.54Z"/> <path fill="#828284" d="m94.55,59.25c17.38-.13,31.04,6.48,43.4,16.42.64.51,1.54,1.42,1.12,1.94-.59.73-1.42-.27-1.99-.7-5.99-4.5-12.69-7.34-20.05-8.59-6.12-1.04-12.3-1.17-18.46-.42-14.28,1.74-26.83,7.42-37.75,16.73-3.02,2.57-5.57,5.6-7.68,8.97-.6.96-1.28,1.41-2.45,1.38-2.89-.07-5.78-.05-8.66,0-1.17.02-1.65-.22-.98-1.44,10.43-18.78,25.62-30.91,47.35-33.91,2.42-.33,4.85-.26,6.16-.38Z"/> <polygon fill="#be1e2f" points="53.17 116.79 53.16 116.79 53.16 116.78 53.17 116.79"/> <polygon fill="#be1e2f" points="125.5 154.8 125.5 154.81 125.5 154.8 125.5 154.8"/> <path fill="#848486" d="m96.7,91.17c-.29-.1-.3-.37-.39-.6-1.07-2.79-2.59-3.93-5.13-3.85-2.38.07-4.35,1.71-5.11,4.24-.86,2.89.12,6.27,2.28,7.81,2.43,1.73,5.83,1.7,8.23-.14,1.96-1.5,2.67-3.63,2.77-5.99.08-1.97,0-3.95.08-5.92.09-2.18,1.27-3.55,3.16-3.88.87-.15,1.32.04,1.3,1.06-.06,2.63.01,5.27-.06,7.9-.03,1.04.35,1.31,1.31,1.27,1.72-.06,3.44.02,5.16-.04,2.88-.1,4.53-1.85,4.58-4.75,0-.66-.03-1.32.03-1.97.13-1.34.7-2.41,1.96-3.03,1.96-.96,2.5-.66,2.47,1.47-.03,1.92.15,3.84-.26,5.75-.84,3.92-4.33,6.82-8.36,6.87-2.02.02-4.05.06-6.07-.02-1.13-.04-1.75.27-2.34,1.35-2.3,4.21-6.19,5.72-10.72,5.47-4.56-.25-8.03-2.49-9.65-6.9-1.58-4.3-1.11-8.39,2.16-11.85,2.53-2.68,7.06-3.5,10.41-2.01,3.16,1.4,4.22,5.16,2.18,7.75Z"/> <polygon fill="#ac3847" points="53.17 116.79 53.16 116.79 53.16 116.78 53.17 116.79"/> <path fill="#bb2333" d="m147.23,142.14c-.23-.24-.57-.17-.85-.02-.93.5-1.89.97-2.79,1.54-10.81,6.79-22.65,9.73-35.32,8.89-19.98-1.31-35.88-10.5-48.49-25.8-2.55-3.1-4.49-6.58-6.61-9.95h0c-.49-1.06-1-2.09-1.44-3.16-.33-.82-.85-1.11-1.74-1.09-2.73.05-5.47.05-8.2,0-1.18-.02-1.3.33-.99,1.42,1.97,6.84,5.25,13.05,9.34,18.8,12.19,17.1,28.9,26.1,49.81,27.2,8.42.44,16.64-.93,24.56-3.91,4.74-1.78,9.33-3.89,13.59-6.66.08.02.13,0,.16-.08,2.81-1.41,5.34-3.26,7.92-5.03.43-.3.71-.84,1.02-1.3.17-.25.27-.6.03-.84Zm-21.73,12.67h0s0,0,0,0h0Z"/> <polygon fill="#ac3847" points="53.17 116.79 53.16 116.79 53.16 116.78 53.17 116.79"/> <path fill="#888889" d="m124.93,124.29c0-2.46-.01-4.83.01-7.21,0-.46-.27-1.13.38-1.33.63-.19,1.17.19,1.61.65.57.6.62,1.36.62,2.13,0,2.33-.01,4.66,0,6.99,0,1.18-.16,2.3-1.47,2.69-1.26.38-2.13-.36-2.84-1.29-1.67-2.16-3.32-4.34-4.98-6.51-.21-.27-.46-.52-.97-1.07,0,2.57.05,4.81-.03,7.04-.02.63.6,1.77-.58,1.85-1.12.08-1.93-.77-1.96-1.92-.08-2.88-.06-5.77-.01-8.66.01-.92.5-1.68,1.46-1.91,1.04-.25,1.88.16,2.53,1,1.76,2.29,3.52,4.57,5.28,6.86.2.26.31.65.97.69Z"/> <path fill="#838385" d="m127.66,89.01c-.1,2.2.25,4.73-.73,7.19-1.49,3.74-4.01,6.36-7.78,7.81-1.03.4-1.4.05-1.53-.89-.21-1.57.18-2.99,1.52-3.89,3.1-2.11,4.41-5.01,4.23-8.7-.07-1.36-.01-2.73,0-4.1,0-1.19.47-2.18,1.45-2.86.76-.53,1.68-1.05,2.54-.63.7.34.27,1.29.3,1.97.06,1.26.02,2.53.02,4.11Z"/> <path fill="#868687" d="m103.25,123.56c1.1,1.83.4,3.75-1.6,4.45-2.51.87-5.17.06-6.62-2.01-1.65-2.36-1.51-5.91.35-8.08,1.97-2.3,4.54-2.8,7.32-2.06,2.7.72,4.25,2.61,4.63,5.41.28,2.07.08,4.15.14,6.22.03.84-.41.89-1.08.71-1.17-.33-1.57-1.16-1.61-2.28-.05-1.41-.03-2.84-.18-4.24-.19-1.69-1.07-2.92-2.79-3.41-1.63-.46-3.32-.02-4.25,1.24-1.05,1.42-1.18,2.99-.42,4.58.55,1.14,1.5,1.78,2.77,1.82,1.28.05,2.25-.48,2.78-1.7.11-.26.19-.58.55-.65Z"/> <path fill="#858586" d="m84.9,125.75c1.5,0,2.99-.02,4.49,0,.96.02,1.94-.02,2.81.5.53.31.79.84.7,1.41-.11.66-.73.39-1.13.39-2.73.02-5.47.01-8.2,0-1.05,0-2.09-.11-2.51-1.27-.42-1.17.33-1.94,1.12-2.6,1.91-1.58,3.85-3.12,5.77-4.69.37-.3.87-.51,1.04-1.33-1.55,0-3.04.02-4.52,0-.65-.01-1.32-.05-1.95-.22-.77-.2-1.22-.79-1.11-1.59.12-.86.88-.48,1.35-.49,2.58-.03,5.17,0,7.75,0,.96,0,1.83.2,2.24,1.21.42,1.03-.09,1.78-.83,2.39-1.98,1.66-3.98,3.28-5.97,4.92-.38.32-.77.64-1.15.96.03.13.07.27.1.4Z"/> <path fill="#8a8a8b" d="m112.36,122.81c0,1.47-.04,2.94.01,4.4.05,1.26-.57,1.2-1.42.84-.85-.36-1.23-1.04-1.24-1.92-.02-3.19.01-6.38-.02-9.56-.01-1.06.55-1.07,1.26-.78,1.01.41,1.39,1.26,1.39,2.31,0,1.57,0,3.14,0,4.71h0Z"/> <polygon fill="#ab3f4d" points="117.89 58.76 117.88 58.76 117.89 58.76 117.89 58.76"/> <path fill="#868687" d="m125.07,81.26c-1.49-.01-2.62-1.15-2.59-2.58.04-1.44,1.21-2.58,2.63-2.57,1.43.02,2.58,1.18,2.6,2.62.02,1.39-1.19,2.54-2.65,2.53Z"/> <path fill="#868587" d="m92.49,95.4c-1.41-.01-2.6-1.21-2.59-2.62.01-1.43,1.18-2.62,2.59-2.63,1.37,0,2.58,1.22,2.6,2.64.02,1.39-1.2,2.62-2.6,2.61Z"/> <path fill="#868587" d="m109.6,101.74c0,1.38-1.22,2.58-2.63,2.58-1.42,0-2.6-1.18-2.59-2.6.01-1.44,1.19-2.59,2.62-2.57,1.48.03,2.6,1.15,2.61,2.59Z"/> <path fill="#858586" d="m115.62,101.64c.02,1.43-1.12,2.64-2.52,2.68-1.4.04-2.63-1.12-2.68-2.53-.05-1.41,1.13-2.64,2.53-2.65,1.47-.02,2.65,1.09,2.67,2.5Z"/> <path fill="#ab3f4d" d="m120.92,59.99s0,0-.02,0h0s0,0,0,0Z"/> <path fill="#888889" d="m111.23,114.71c-1.14,0-1.71-.54-1.75-1.46-.04-.94.55-1.51,1.49-1.56,1-.06,1.51.59,1.57,1.48.07.96-.52,1.47-1.32,1.54Z"/> <polygon fill="#ab3f4d" points="117.89 58.76 117.88 58.76 117.89 58.76 117.89 58.76"/> <path fill="#ab3f4d" d="m120.92,59.99s0,0-.02,0h0s0,0,0,0Z"/> <polygon fill="#a64653" points="64.38 61.37 64.29 61.46 64.29 61.38 64.38 61.37"/> <polygon fill="#ac3847" points="125.5 154.8 125.5 154.81 125.5 154.8 125.5 154.8"/> </g> </g> </g></svg>
+        <div class="names">
+          <div class="mark">Zain Solutions</div>
+          <h1 class="tz-title">لوحة مناقصات إسناد</h1>
+        </div>
+      </div>
+      <div class="tag">المناقصات المفتوحة التي قد تناسب خدمات زين</div>
+      <div class="tz-chips">
+        <span class="chip"><i class="dot" id="tz-health-dot"></i>الجمع: <b class="dash-skeleton" data-source="status" data-field="status" data-row="0">—</b></span>
+        <span class="chip">آخر تحديث: <b class="dash-skeleton" data-source="status" data-field="last_success_at" data-row="0">—</b> <small>مسقط</small></span>
+        <span class="chip">الصفحات: <b class="dash-skeleton" data-source="status" data-field="pages" data-row="0">—</b> من <span data-source="status" data-field="total_pages" data-row="0">—</span></span>
+        <span class="chip">جديدة في آخر جمع: <b class="dash-skeleton" data-source="status" data-field="new_last_run" data-row="0">—</b></span>
+      </div>
+    </div>
+  </header>
+
+
+  <nav class="tz-divs" id="tz-divs" aria-label="أقسام زين"></nav>
+
+  <section class="tz-tiles" id="figures">
+    <div class="tz-tile key"><span class="lbl">جديدة هذا الأسبوع</span><span class="num dash-skeleton" data-source="kpis" data-field="new_7" data-row="0">—</span><span class="sub">ظهرت في إسناد خلال آخر 7 أيام</span></div>
+    <div class="tz-tile"><span class="lbl">مفتوحة وتناسب خدمات زين</span><span class="num dash-skeleton" data-source="kpis" data-field="matched" data-row="0">—</span><span class="sub">تقبل درجتنا وموعد التقديم لم ينتهِ</span></div>
+    <div class="tz-tile"><span class="lbl">بيع المستندات مفتوح</span><span class="num dash-skeleton" data-source="kpis" data-field="sale_open" data-row="0">—</span><span class="sub">يمكن شراء الكراسة</span></div>
+    <div class="tz-tile"><span class="lbl">ينتهي البيع خلال 7 أيام</span><span class="num dash-skeleton" data-source="kpis" data-field="sale_7" data-row="0">—</span><span class="sub">تحتاج قرار شراء قريبًا</span></div>
+  </section>
+
+  <details class="tz-note tz-guide" id="method-note">
+    <summary>كيف تستخدم اللوحة؟</summary>
+    <ul>
+      <li>هنا المناقصات <b>المفتوحة</b> التي قد تناسب خدماتنا، و<b>الجديدة تظهر أولًا</b> وتاريخ ظهورها بالأحمر.</li>
+      <li>لون الصف يبيّن <b>الأولوية</b>: الأغمق قصوى (الكاميرات)، ثم عالية، ثم عادية (المطبوعات).</li>
+      <li>اضغط <b>رقم المناقصة</b> لتفتح صفحتها الرسمية في إسناد.</li>
+      <li>للشراء: علّم ☐ المناقصات التي تريدها، ثم اضغط <b>«نسخ بيانات المحدد»</b> وأرسلها.</li>
+      <li>انتبه لعمود <b>«حالة البيع»</b>: إن كان «انتهى» فلا يمكن شراء الكراسة حتى لو كان التقديم مفتوحًا.</li>
+      <li>الأرقام والجدول تعرض فقط المناقصات التي <b>تقبل درجة الشركة</b>؛ اختر «كل الدرجات» لرؤية الباقي.</li>
+      <li><b>المفضلة:</b> اضغط ☆ بجانب رقم المناقصة، وتجدها في «⭐ المفضلة» من قائمة النطاق. المفضلة خاصة بك وعلى هذا الجهاز.</li>
+      <li><b>«الملاءمة»</b> تقدير تقريبي من عنوان المناقصة، والتفاصيل المؤكدة في كراسة الشروط.</li>
+    </ul>
+  </details>
+
+  <section class="tz-grid" id="charts">
+    <div class="tz-card" id="by-service-card">
+      <h2>حسب خدمات زين</h2>
+      <p class="note">المناقصات المفتوحة المطابقة لكل خدمة؛ قد تُحسب المناقصة في أكثر من خدمة</p>
+      <div class="tz-chart" id="by-service" data-source="by_service"></div>
+    </div>
+    <div class="tz-card" id="timeline-card">
+      <h2>متى ينتهي بيع المستندات</h2>
+      <p class="note">المناقصات المطابقة التي ما زال بيع مستنداتها مفتوحًا، حسب يوم انتهاء البيع</p>
+      <div class="tz-chart" id="timeline" data-source="sale_timeline"></div>
+    </div>
+  </section>
+
+  <section class="tz-card" id="tenders">
+    <h2>المناقصات</h2>
+    <p class="note">اضغط رقم المناقصة لفتح صفحتها الرسمية في إسناد. اضغط عنوان أي عمود للترتيب. علّم ☐ المناقصات التي تريد شراءها ثم انسخ بياناتها.</p>
+    <div class="tz-controls">
+      <input id="tz-q" type="search" placeholder="ابحث في العنوان أو الجهة أو الرقم" aria-label="بحث">
+      <select id="tz-service" aria-label="الخدمة" data-source="by_service"></select>
+      <select id="tz-scope" aria-label="النطاق">
+        <option value="matched">تناسب خدمات زين</option>
+        <option value="new">الجديدة فقط</option>
+        <option value="open">كل المفتوحة (للبحث عمّا فات الفلتر)</option>
+        <option value="fav">⭐ المفضلة</option>
+      </select>
+      <select id="tz-fit" aria-label="الملاءمة">
+        <option value="">كل درجات الملاءمة</option>
+        <option value="مرتفعة">ملاءمة مرتفعة</option>
+        <option value="متوسطة">ملاءمة متوسطة</option>
+      </select>
+      <select id="tz-priority" aria-label="الأولوية">
+        <option value="">كل الأولويات</option>
+        <option value="قصوى">أولوية قصوى (الكاميرات)</option>
+        <option value="عالية">أولوية عالية</option>
+        <option value="عادية">أولوية عادية</option>
+      </select>
+      <select id="tz-grade" aria-label="الدرجة">
+        <option value="">تقبل درجتنا</option>
+        <option value="all">كل الدرجات</option>
+      </select>
+      <select id="tz-sale" aria-label="حالة البيع">
+        <option value="">كل حالات البيع</option>
+        <option value="مفتوح">البيع مفتوح (يمكن شراء الكراسة)</option>
+        <option value="انتهى">البيع انتهى</option>
+      </select>
+      <button id="tz-reset" type="button">إعادة الضبط</button>
+      <span class="tz-count" id="tz-count"></span>
+    </div>
+    <div class="tz-select" id="tz-select">
+      <span id="tz-sel-count">لم تحدد أي مناقصة بعد</span>
+      <button id="tz-copy" type="button" class="primary" disabled>نسخ بيانات المحدد</button>
+      <button id="tz-fav" type="button" disabled>⭐ أضف المحدد للمفضلة</button>
+      <button id="tz-csv" type="button" disabled hidden>تنزيل ملف Excel</button>
+      <button id="tz-clear" type="button" disabled>إلغاء التحديد</button>
+      <span class="msg" id="tz-sel-msg" role="status"></span>
+      <textarea class="tz-copybox" id="tz-copybox" readonly hidden aria-label="بيانات المناقصات المحددة"></textarea>
+    </div>
+    <div class="tz-legend" aria-label="ألوان الأولوية">
+      <span>ألوان الصفوف حسب الأولوية:</span>
+      <span class="item"><i class="sw top"></i>قصوى (الكاميرات)</span>
+      <span class="item"><i class="sw high"></i>عالية</span>
+      <span class="item"><i class="sw normal"></i>عادية (المطبوعات)</span>
+    </div>
+    <div class="tz-tablebox">
+      <table class="tz-table" id="tz-table" data-source="tenders" data-row-key="id">
+        <thead><tr>
+          <th class="sel"><input type="checkbox" id="tz-all" aria-label="تحديد كل المناقصات الظاهرة"></th>
+          <th data-field="first_seen" aria-sort="none"><button type="button" data-sort="first_seen">أول ظهور</button></th>
+          <th data-field="number" aria-sort="none"><button type="button" data-sort="number">رقم المناقصة</button></th>
+          <th data-field="title" aria-sort="none"><button type="button" data-sort="title">العنوان</button></th>
+          <th data-field="zain_services" aria-sort="none"><button type="button" data-sort="zain_services">خدمات زين المحتملة</button></th>
+          <th data-field="entity" aria-sort="none"><button type="button" data-sort="entity">الجهة</button></th>
+          <th data-field="sale_end" aria-sort="none"><button type="button" data-sort="sale_end">نهاية بيع المستندات</button></th>
+          <th data-field="sale_state" aria-sort="none"><button type="button" data-sort="sale_state">حالة البيع</button></th>
+          <th data-field="closing" aria-sort="none"><button type="button" data-sort="closing">آخر موعد للتقديم</button></th>
+          <th data-field="fee" aria-sort="none"><button type="button" data-sort="fee">الرسوم (ر.ع.)</button></th>
+          <th data-field="fit" aria-sort="none"><button type="button" data-sort="score">الملاءمة (تقدير)</button></th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <p class="tz-empty" id="tz-empty" hidden>لا توجد مناقصات بهذه الشروط.</p>
+  </section>
+</div>
+
+<script>
+  // A tender "matches" when the AI rated it high/medium, or (until the AI has classified it) the keyword filter found a service.
+  window.tzMatch = (t) => t.in_listing && t.bid_open === true && (t.fit ? (t.fit === 'مرتفعة' || t.fit === 'متوسطة') : !!t.kw_services);
+  // Owner decision (24 Oct 2026): count only tenders that accept the company's grade (grade_ok false = not open to us;
+  // null = Esnad did not publish the grades, kept). The numbers and charts use this; the table can show all grades.
+  window.tzOurs = (t) => tzMatch(t) && t.grade_ok !== false;
+  // Zain's divisions (marketing, solutions, supply). Every calculation gives one set of rows per division; '' is all of them.
+  window.tzDivisions = (status) => ((status[0] || {}).division_order || '').split('، ').filter(Boolean);
+  window.tzInDivision = (t, division) => !division || (t.divisions || '').split('، ').includes(division);
+
+  dash.calc('kpis', {
+    inputs: ['tenders', 'status'],
+    title: 'أرقام المطابقة',
+    description: 'يعدّ المناقصات المفتوحة للتقديم التي تناسب خدمات زين، وحالة بيع مستنداتها في يوم الجمع، لكل قسم من أقسام زين (الصف الأول: كل الأقسام).',
+    fn: (tenders, status) => {
+      const all = tenders.filter(tzOurs);
+      const days = (a, b) => (Date.parse(a) - Date.parse(b)) / 86400000;
+      return ['', ...tzDivisions(status)].map((division) => {
+        const m = all.filter((t) => tzInDivision(t, division));
+        return {
+          division: division || 'كل الأقسام',
+          matched: m.length,
+          new_7: m.filter((t) => t.is_new === true).length,
+          sale_open: m.filter((t) => t.sale_open === true).length,
+          sale_7: m.filter((t) => t.sale_open === true && t.sale_end && t.status_at && days(t.sale_end, t.status_at) <= 7).length,
+          sale_ended: m.filter((t) => t.sale_open === false).length,
+        };
+      });
+    },
+  });
+
+  dash.calc('by_service', {
+    inputs: ['tenders', 'status'],
+    title: 'المطابقة حسب الخدمة',
+    description: 'عدد المناقصات المفتوحة المطابقة لكل خدمة من خدمات زين، مع القسم الذي تتبعه الخدمة.',
+    fn: (tenders, status) => {
+      let map = {};
+      try { map = JSON.parse((status[0] || {}).service_divisions || '{}'); } catch (e) { map = {}; }
+      return Array.from(d3.rollup(tenders.filter(tzOurs).flatMap((t) => (t.zain_services || '').split('، ').filter(Boolean)),
+        (v) => v.length, (s) => s), ([service, n]) => ({ division: map[service] || '', service, n })).sort((a, b) => b.n - a.n);
+    },
+  });
+
+  dash.calc('sale_timeline', {
+    inputs: ['tenders', 'status'],
+    title: 'انتهاء بيع المستندات',
+    description: 'المناقصات المطابقة المفتوح بيع مستنداتها، حسب يوم انتهاء البيع، لكل قسم (division فارغ = كل الأقسام).',
+    fn: (tenders, status) => {
+      const open = tenders.filter((t) => tzOurs(t) && t.sale_open === true && t.sale_end);
+      return ['', ...tzDivisions(status)].flatMap((division) => Array.from(
+        d3.rollup(open.filter((t) => tzInDivision(t, division)), (v) => v.length, (t) => t.sale_end),
+        ([day, n]) => ({ division, day, n })).sort((a, b) => (a.day < b.day ? -1 : 1)).slice(0, 30));
+    },
+  });
+
+  window.tzFmt = d3.format(',');
+  window.tzFail = (el) => {
+    el.replaceChildren();
+    const d = document.createElement('div');
+    d.className = 'tz-fail';
+    d.textContent = 'تعذّر التحميل';
+    el.append(d);
+  };
+  window.tzTip = (box) => {
+    let tip = box.querySelector('.tz-tip');
+    if (!tip) { tip = document.createElement('div'); tip.className = 'tz-tip'; tip.hidden = true; box.append(tip); }
+    return {
+      show(event, key, value) {
+        tip.replaceChildren();
+        const k = document.createElement('div'); k.className = 'k'; k.textContent = key;
+        const v = document.createElement('div'); v.textContent = value;
+        tip.append(k, v); tip.hidden = false;
+        const r = box.getBoundingClientRect();
+        let x = event.clientX - r.left + 12, y = event.clientY - r.top + 12;
+        x = Math.min(x, r.width - tip.offsetWidth - 4); y = Math.min(y, r.height - tip.offsetHeight - 4);
+        tip.style.left = Math.max(0, x) + 'px'; tip.style.top = Math.max(0, y) + 'px';
+      },
+      hide() { tip.hidden = true; },
+    };
+  };
+</script>
+
+<script>
+  // Horizontal bars, labels on the right (Arabic reading order), bars grow leftward.
+  function hbars(el, rows, labelKey) {
+    el.replaceChildren();
+    if (!rows.length) return;
+    const w = el.clientWidth || 360, barH = 18, gap = 9, top = 4;
+    const h = top + rows.length * (barH + gap);
+    const svg = d3.select(el).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${w} ${h}`)
+      .attr('role', 'img').attr('font-family', 'var(--zs-font)')
+      .attr('direction', 'ltr');  // the page is RTL; keep SVG coordinates and text anchors left-to-right
+    const labels = svg.append('g').selectAll('text').data(rows).join('text')
+      .attr('x', w).attr('y', (d, i) => top + i * (barH + gap) + barH / 2).attr('dy', '0.35em')
+      .attr('direction', 'rtl').attr('text-anchor', 'start')  // Arabic labels with Latin words (ERP) keep their word order
+      .attr('fill', 'var(--color-fg)').attr('font-size', 12).text((d) => d[labelKey]);
+    let labelW = 0;
+    labels.each(function () { labelW = Math.max(labelW, this.getComputedTextLength()); });
+    const x0 = w - labelW - 10;
+    const valueRoom = 8 + String(d3.max(rows, (d) => d.n)).length * 8;
+    const xs = d3.scaleLinear([0, d3.max(rows, (d) => d.n)], [0, Math.max(10, x0 - valueRoom)]);
+    const tip = tzTip(el);
+    svg.append('g').selectAll('rect').data(rows).join('rect')
+      .attr('x', (d) => x0 - xs(d.n)).attr('y', (d, i) => top + i * (barH + gap))
+      .attr('width', (d) => Math.max(1, xs(d.n))).attr('height', barH).attr('rx', 4)
+      .attr('fill', 'var(--zs-accent)')
+      .on('mousemove', (event, d) => tip.show(event, d[labelKey], tzFmt(d.n) + ' مناقصة'))
+      .on('mouseleave', () => tip.hide());
+    svg.append('g').selectAll('text').data(rows).join('text')
+      .attr('x', (d) => x0 - xs(d.n) - 6).attr('y', (d, i) => top + i * (barH + gap) + barH / 2).attr('dy', '0.35em')
+      .attr('text-anchor', 'end').attr('fill', 'var(--color-fg-muted)').attr('font-size', 12).text((d) => tzFmt(d.n));
+  }
+
+  function timeline(el, rows) {
+    el.replaceChildren();
+    if (!rows.length) return;
+    const w = el.clientWidth || 360, h = 200, m = { top: 16, right: 8, bottom: 26, left: 26 };
+    const parsed = rows.map((r) => ({ ...r, date: new Date(r.day + 'T00:00:00Z') }));
+    const x = d3.scaleBand(parsed.map((d) => d.day), [m.left, w - m.right]).padding(0.3);
+    const y = d3.scaleLinear([0, d3.max(parsed, (d) => d.n)], [h - m.bottom, m.top]).nice();
+    const ticks = y.ticks(Math.min(4, d3.max(parsed, (d) => d.n))).filter(Number.isInteger);
+    const svg = d3.select(el).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${w} ${h}`)
+      .attr('font-family', 'var(--zs-font)').attr('direction', 'ltr');
+    svg.append('g').selectAll('line').data(ticks).join('line')
+      .attr('x1', m.left).attr('x2', w - m.right).attr('y1', (d) => y(d)).attr('y2', (d) => y(d)).attr('stroke', 'var(--cds-chart-grid)');
+    svg.append('g').selectAll('text').data(ticks).join('text')
+      .attr('x', m.left - 6).attr('y', (d) => y(d)).attr('dy', '0.35em').attr('text-anchor', 'end')
+      .attr('fill', 'var(--color-fg-muted)').attr('font-size', 11).text((d) => tzFmt(d));
+    const tip = tzTip(el);
+    const dayFmt = d3.utcFormat('%-d/%-m');
+    svg.append('g').selectAll('rect').data(parsed).join('rect')
+      .attr('x', (d) => x(d.day)).attr('width', x.bandwidth()).attr('y', (d) => y(d.n))
+      .attr('height', (d) => Math.max(1, y(0) - y(d.n))).attr('rx', Math.min(4, x.bandwidth() / 2))
+      .attr('fill', 'var(--zs-gold)')
+      .on('mousemove', (event, d) => tip.show(event, 'ينتهي البيع ' + d.day, tzFmt(d.n) + ' مناقصة'))
+      .on('mouseleave', () => tip.hide());
+    const every = Math.max(1, Math.ceil(parsed.length / Math.max(2, Math.floor((w - m.left) / 46))));
+    svg.append('g').selectAll('text').data(parsed.filter((d, i) => i % every === 0)).join('text')
+      .attr('x', (d) => x(d.day) + x.bandwidth() / 2).attr('y', h - 8).attr('text-anchor', 'middle')
+      .attr('fill', 'var(--color-fg-muted)').attr('font-size', 11).text((d) => dayFmt(d.date));
+  }
+
+  const charts = [
+    ['by-service', 'by_service', (el, rows) => hbars(el, rows, 'service')],
+    ['timeline', 'sale_timeline', timeline],
+  ];
+  const tzDivision = () => dash.params().division || '';
+
+  dash.onData(() => {
+    for (const [elId, src, draw] of charts) {
+      const el = document.getElementById(elId);
+      const d = dash.data(src);
+      if (d.status === 'ok') draw(el, d.data.filter((r) => src === 'by_service' ? !tzDivision() || r.division === tzDivision() : r.division === tzDivision()));
+      else if (d.status === 'error') tzFail(el);
+      else el.replaceChildren();
+    }
+    const k = dash.data('kpis');
+    const s = dash.data('status');
+    // The tiles show the selected division's row of `kpis` (row 0 = all divisions).
+    const kRow = k.status === 'ok' ? Math.max(0, k.data.findIndex((r) => r.division === (tzDivision() || 'كل الأقسام'))) : 0;
+    document.querySelectorAll('#figures [data-source="kpis"]').forEach((el) => { el.dataset.row = String(kRow); });
+    document.querySelectorAll('[data-source="kpis"], [data-source="status"]').forEach((el) => {
+      const src = el.dataset.source === 'kpis' ? k : s;
+      const row = src.data && src.data[Number(el.dataset.row) || 0];
+      if (src.status === 'ok' && row) {
+        const v = row[el.dataset.field];
+        el.textContent = v == null ? '—' : typeof v === 'number' ? tzFmt(v) : String(v);
+        el.classList.remove('dash-skeleton');
+      } else if (src.status === 'error') {
+        el.textContent = '—';
+        el.classList.remove('dash-skeleton');
+      }
+    });
+  });
+</script>
+
+<script>
+  const q = document.getElementById('tz-q');
+  const serviceSel = document.getElementById('tz-service');
+  const scopeSel = document.getElementById('tz-scope');
+  const fitSel = document.getElementById('tz-fit');
+  const prioSel = document.getElementById('tz-priority');
+  const saleSel = document.getElementById('tz-sale');
+  const gradeSel = document.getElementById('tz-grade');
+  const tbody = document.querySelector('#tz-table tbody');
+  const count = document.getElementById('tz-count');
+  const empty = document.getElementById('tz-empty');
+  const LIMIT = 400;
+  let sortKey = 'first_seen', sortDir = -1;
+  let shownIds = [];
+
+  // Selection for "copy / download selected": kept in this browser only (a convenience, not shared).
+  const picked = new Set((() => { try { return JSON.parse(localStorage.getItem('tz-picked') || '[]'); } catch (e) { return []; } })());
+  const savePicked = () => { try { localStorage.setItem('tz-picked', JSON.stringify([...picked])); } catch (e) { /* storage blocked */ } };
+
+  q.addEventListener('input', () => dash.setParams({ q: q.value }));
+  serviceSel.addEventListener('change', () => dash.setParams({ service: serviceSel.value }));
+  scopeSel.addEventListener('change', () => dash.setParams({ scope: scopeSel.value }));
+  fitSel.addEventListener('change', () => dash.setParams({ fit: fitSel.value }));
+  prioSel.addEventListener('change', () => dash.setParams({ priority: prioSel.value }));
+  saleSel.addEventListener('change', () => dash.setParams({ sale: saleSel.value }));
+  gradeSel.addEventListener('change', () => dash.setParams({ grade: gradeSel.value }));
+  document.getElementById('tz-reset').addEventListener('click', () => { dash.resetParams(); });
+  tbody.addEventListener('change', (e) => {
+    const box = e.target.closest('input[type=checkbox]');
+    if (!box) return;
+    const id = box.closest('tr').dataset.key;
+    if (box.checked) picked.add(id); else picked.delete(id);
+    box.closest('tr').classList.toggle('picked', box.checked);
+    savePicked(); updateSelection();
+  });
+  document.getElementById('tz-all').addEventListener('change', (e) => {
+    shownIds.forEach((id) => (e.target.checked ? picked.add(id) : picked.delete(id)));
+    savePicked(); drawTable();
+  });
+  document.getElementById('tz-clear').addEventListener('click', () => { picked.clear(); savePicked(); drawTable(); });
+
+  const pickedRows = () => {
+    const d = dash.data('tenders');
+    return d.status === 'ok' ? d.data.filter((t) => picked.has(t.id)).sort((a, b) => String(a.sale_end || '9999').localeCompare(String(b.sale_end || '9999'))) : [];
+  };
+  const fmtFee = (t) => (t.fee_text ? `${t.fee_text} ر.ع.` : 'غير متاح');
+
+  function selectionText(rows) {
+    return rows.map((t, i) => [
+      `${i + 1}) ${t.title || t.title_listing || ''}`,
+      `رقم المناقصة: ${t.number || 'غير متاح'}`,
+      `الجهة: ${t.entity || 'غير متاح'}`,
+      `نهاية بيع المستندات: ${t.sale_end_text || 'غير متاح'}${t.sale_state === 'انتهى' ? ' (انتهى البيع)' : ''}`,
+      `آخر موعد للتقديم: ${t.closing_text || 'غير متاح'}`,
+      `رسوم المناقصة: ${fmtFee(t)}`,
+      `الخدمة: ${t.zain_services || '—'}`,
+      `الرابط: ${t.url || 'غير متاح'}`,
+    ].join('\n')).join('\n\n');
+  }
+
+  // Copies text to the clipboard; where the browser blocks that, shows it selected for copying by hand.
+  function copyOut(text, done) {
+    const box = document.getElementById('tz-copybox');
+    const msg = document.getElementById('tz-sel-msg');
+    const showBox = () => { box.value = text; box.hidden = false; box.focus(); box.select(); msg.textContent = 'النص ظاهر في الأسفل ومحدَّد: انسخه يدويًا.'; };
+    try {
+      navigator.clipboard.writeText(text).then(() => { box.hidden = true; msg.textContent = done; }, showBox);
+    } catch (e) { showBox(); }
+  }
+
+  document.getElementById('tz-copy').addEventListener('click', () => {
+    copyOut(`مناقصات للشراء (${pickedRows().length})\n\n` + selectionText(pickedRows()),
+      `✓ نُسخت بيانات ${pickedRows().length} مناقصة. الصقها في واتساب أو تيليجرام.`);
+  });
+
+  // Favorites (owner decision, 24 Oct 2026): a star by each tender. Personal by default: kept in this browser
+  // only. If a shared Google Sheet is set up later (dashboard.favorites_url, tools/favorites_apps_script.gs),
+  // the same star saves for the whole team instead.
+  const FAV_URL = window.TZ_FAV_URL || '';
+  let favs = null;   // shared mode: Map tender id -> who starred it, once read from the sheet
+  const mine = new Set((() => { try { return JSON.parse(localStorage.getItem('tz-favs') || '[]'); } catch (e) { return []; } })());
+  const saveMine = () => { try { localStorage.setItem('tz-favs', JSON.stringify([...mine])); } catch (e) { /* storage blocked */ } };
+  window.tzFavBy = (t) => (FAV_URL ? (favs ? favs.get(String(t.id)) : t.favorite_by) : (mine.has(String(t.id)) ? 'أنت' : ''));
+  const favMsg = document.getElementById('tz-sel-msg');
+  function favCall(params) {
+    const u = new URL(FAV_URL);
+    Object.entries(params || {}).forEach(([k, v]) => u.searchParams.set(k, v));
+    return fetch(u).then((r) => r.json()).then((d) => { favs = new Map(d.favorites.map((f) => [f.id, f.by])); drawTable(); });
+  }
+  function myName() {
+    let name = '';
+    try { name = localStorage.getItem('tz-name') || ''; } catch (e) { /* storage blocked */ }
+    if (!name) {
+      name = (prompt('اكتب اسمك (يظهر للفريق بجانب النجمة):') || '').trim();
+      try { if (name) localStorage.setItem('tz-name', name); } catch (e) { /* storage blocked */ }
+    }
+    return name;
+  }
+  function setFav(t, on, by) {
+    favs = favs || new Map();
+    if (on) favs.set(String(t.id), by); else favs.delete(String(t.id));
+    return favCall(on ? { action: 'add', id: t.id, number: t.number || '', title: (t.title || '').slice(0, 200), by }
+                      : { action: 'remove', id: t.id })
+      .catch(() => { favMsg.textContent = 'تعذّر حفظ المفضلة؛ حاول مرة ثانية.'; return favCall().catch(() => {}); });
+  }
+  tbody.addEventListener('click', (e) => {
+    const star = e.target.closest('.tz-star');
+    if (!star) return;
+    const t = (dash.data('tenders').data || []).find((x) => String(x.id) === star.closest('tr').dataset.key);
+    if (!t) return;
+    const on = !tzFavBy(t);
+    if (!FAV_URL) {
+      if (on) mine.add(String(t.id)); else mine.delete(String(t.id));
+      saveMine(); drawTable();
+      return;
+    }
+    const by = on ? myName() : '';
+    if (on && !by) return;
+    setFav(t, on, by);
+    drawTable();
+  });
+  const favBtn = document.getElementById('tz-fav');
+  favBtn.hidden = false;
+  favBtn.addEventListener('click', () => {
+    if (!FAV_URL) {
+      const n = pickedRows().filter((t) => !mine.has(String(t.id))).length;
+      pickedRows().forEach((t) => mine.add(String(t.id)));
+      saveMine(); drawTable();
+      favMsg.textContent = `✓ أُضيفت ${n} مناقصة لمفضلتك؛ تجدها في «⭐ المفضلة».`;
+      return;
+    }
+    const by = myName();
+    if (!by) return;
+    const rows = pickedRows().filter((t) => !tzFavBy(t));
+    rows.reduce((chain, t) => chain.then(() => setFav(t, true, by)), Promise.resolve())
+      .then(() => { favMsg.textContent = `✓ أُضيفت ${rows.length} مناقصة للمفضلة؛ يراها الفريق في «⭐ المفضلة».`; });
+  });
+  if (FAV_URL) favCall().catch(() => { /* sheet unreachable: the copy in the data is used */ });
+
+  // Excel download works on the public site only (the claude.ai viewer blocks downloads).
+  const csvBtn = document.getElementById('tz-csv');
+  csvBtn.hidden = !window.TZ_STANDALONE;
+  csvBtn.addEventListener('click', () => {
+    const cols = [['رقم المناقصة', 'number'], ['العنوان', 'title'], ['الجهة', 'entity'], ['نهاية بيع المستندات', 'sale_end_text'],
+      ['حالة البيع', 'sale_state'], ['آخر موعد للتقديم', 'closing_text'], ['نهاية الاستفسارات', 'enquiry_end_text'],
+      ['الرسوم (ر.ع.)', 'fee_text'], ['خدمات زين', 'zain_services'], ['رابط إسناد', 'url']];
+    const q = (v) => `"${String(v == null ? '' : v).replace(/"/g, '""')}"`;
+    const lines = [cols.map((c) => q(c[0])).join(','), ...pickedRows().map((t) => cols.map((c) => q(t[c[1]])).join(','))];
+    const blob = new Blob(['\ufeff' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `مناقصات-للشراء-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.append(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  });
+
+  function updateSelection() {
+    const n = pickedRows().length;
+    document.getElementById('tz-select').classList.toggle('on', n > 0);
+    document.getElementById('tz-sel-count').innerHTML = '';
+    const label = document.getElementById('tz-sel-count');
+    const hidden = n - shownIds.filter((id) => picked.has(id)).length;
+    if (n) {
+      const b = document.createElement('b'); b.textContent = tzFmt(n);
+      label.append('محدد: ', b, ' مناقصة');
+      if (hidden > 0) label.append(` (${tzFmt(hidden)} لا تظهر بالفلتر الحالي)`);
+    } else label.textContent = 'لم تحدد أي مناقصة بعد';
+    ['tz-copy', 'tz-fav', 'tz-csv', 'tz-clear'].forEach((id) => { document.getElementById(id).disabled = n === 0; });
+    const all = document.getElementById('tz-all');
+    const inView = shownIds.filter((id) => picked.has(id)).length;
+    all.checked = shownIds.length > 0 && inView === shownIds.length;
+    all.indeterminate = inView > 0 && inView < shownIds.length;
+  }
+
+  document.querySelectorAll('#tz-table th button').forEach((b) => b.addEventListener('click', () => {
+    const key = b.dataset.sort;
+    sortDir = key === sortKey ? -sortDir : 1;
+    sortKey = key;
+    drawTable();
+  }));
+
+  const norm = (s) => (s || '').toLowerCase().replace(/[ً-ْـ]/g, '').replace(/[إأآٱ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي');
+
+  function cell(tr, text, cls) {
+    const td = document.createElement('td');
+    if (cls) td.className = cls;
+    td.textContent = text == null ? '' : String(text);
+    tr.append(td);
+    return td;
+  }
+
+  function drawTable() {
+    const d = dash.data('tenders');
+    if (d.status !== 'ok') { tbody.replaceChildren(); count.textContent = ''; empty.hidden = true; shownIds = []; updateSelection(); return; }
+    const p = dash.params();
+    const scope = p.scope || 'matched', service = p.service || '', words = norm(p.q || '').split(/\s+/).filter(Boolean);
+    let rows = d.data.filter((t) => t.in_listing && t.bid_open === true);
+    // A saved selection of a tender that has since closed or left Esnad's list is dropped, so it never counts unseen.
+    const open = new Set(rows.map((t) => t.id));
+    const stale = [...picked].filter((id) => !open.has(id));
+    if (stale.length) { stale.forEach((id) => picked.delete(id)); savePicked(); }
+    if (scope === 'matched') rows = rows.filter(tzMatch);
+    if (scope === 'new') rows = rows.filter((t) => tzMatch(t) && t.is_new === true);
+    if (scope === 'fav') rows = rows.filter((t) => tzFavBy(t));
+    if (p.grade !== 'all' && scope !== 'fav') rows = rows.filter((t) => t.grade_ok !== false);
+    if (p.division) rows = rows.filter((t) => tzInDivision(t, p.division));
+    if (service) rows = rows.filter((t) => (t.zain_services || '').split('، ').includes(service));
+    if (p.fit) rows = rows.filter((t) => t.fit === p.fit);
+    if (p.priority) rows = rows.filter((t) => t.priority === p.priority);
+    if (p.sale) rows = rows.filter((t) => t.sale_state === p.sale);
+    if (words.length) rows = rows.filter((t) => {
+      const hay = norm([t.title, t.title_listing, t.description, t.entity, t.number, t.kw_services, t.services].join(' '));
+      return words.every((w) => hay.includes(w));
+    });
+    rows.sort((a, b) => {
+      const x = a[sortKey], y = b[sortKey];
+      if (x == null && y == null) return 0;
+      if (x == null) return 1;
+      if (y == null) return -1;
+      const c = (typeof x === 'number' ? x - y : String(x).localeCompare(String(y), 'ar')) * sortDir;
+      return c || String(a.sale_end || '9999').localeCompare(String(b.sale_end || '9999'));
+    });
+    document.querySelectorAll('#tz-table th').forEach((th) => {
+      const b = th.querySelector('button');
+      if (!b) return;
+      th.setAttribute('aria-sort', b.dataset.sort === sortKey ? (sortDir === 1 ? 'ascending' : 'descending') : 'none');
+    });
+    const shown = rows.slice(0, LIMIT);
+    count.textContent = rows.length > LIMIT
+      ? `يظهر ${tzFmt(LIMIT)} من ${tzFmt(rows.length)} مناقصة. ضيّق البحث لرؤية الباقي.`
+      : `${tzFmt(rows.length)} مناقصة`;
+    empty.hidden = rows.length > 0;
+    shownIds = shown.map((t) => t.id);
+    const frag = document.createDocumentFragment();
+    for (const t of shown) {
+      const tr = document.createElement('tr');
+      tr.dataset.key = t.id;
+      const prio = { 'قصوى': 'p-top', 'عالية': 'p-high', 'عادية': 'p-normal' }[t.priority] || '';
+      tr.className = [tzMatch(t) ? 'match' : '', t.is_new ? 'new' : '', prio, picked.has(t.id) ? 'picked' : ''].join(' ').trim();
+      const sel = cell(tr, null, 'sel');
+      const box = document.createElement('input');
+      box.type = 'checkbox'; box.checked = picked.has(t.id);
+      box.setAttribute('aria-label', `تحديد ${t.number || ''}`);
+      sel.append(box);
+      cell(tr, t.first_seen, 'f');
+      const n = cell(tr, null, 'n');
+      const by = tzFavBy(t);
+      const star = document.createElement('button');
+      star.type = 'button';
+      star.className = 'tz-star' + (by ? ' on' : '');
+      star.textContent = by ? '⭐' : '☆';
+      star.title = by ? (FAV_URL ? `في المفضلة (أضافها ${by}) — اضغط للإزالة` : 'في مفضلتك — اضغط للإزالة') : 'أضف للمفضلة';
+      n.append(star);
+      if (t.url) {
+        const a = document.createElement('a');
+        a.href = t.url; a.target = '_blank'; a.rel = 'noopener';
+        a.textContent = t.number || '';
+        n.append(a);
+      } else n.textContent = t.number || '';
+      cell(tr, t.title, 't');
+      cell(tr, t.zain_services, 's');
+      cell(tr, t.entity, 'e');
+      cell(tr, t.sale_end, 'd');
+      cell(tr, t.sale_state, t.sale_state === 'مفتوح' ? 'st-open' : t.sale_state === 'انتهى' ? 'st-ended' : '');
+      cell(tr, t.closing, 'd');
+      cell(tr, t.fee);
+      cell(tr, t.fit);
+      frag.append(tr);
+    }
+    tbody.replaceChildren(frag);
+    updateSelection();
+  }
+
+  const guide = document.getElementById('method-note');
+  if (guide && window.matchMedia && matchMedia('(min-width: 721px)').matches) guide.open = true;
+
+  // Division switcher: all / marketing / solutions / supply, with the number of matching open tenders in each.
+  const divNav = document.getElementById('tz-divs');
+  divNav.addEventListener('click', (e) => {
+    const b = e.target.closest('button');
+    if (b) dash.setParams({ division: b.dataset.division, service: '' });
+  });
+  dash.onData(() => {
+    const k = dash.data('kpis');
+    const rows = k.status === 'ok' ? k.data : [];
+    const current = dash.params().division || '';
+    divNav.replaceChildren(...rows.map((r, i) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.dataset.division = i === 0 ? '' : r.division;
+      b.setAttribute('aria-pressed', String(b.dataset.division === current));
+      const c = document.createElement('span'); c.className = 'c'; c.textContent = tzFmt(r.matched);
+      b.append(r.division, c);
+      return b;
+    }));
+    divNav.hidden = rows.length < 2;
+  });
+
+  dash.onData(() => {
+    const health = (dash.data('status').data || [])[0];
+    const dot = document.getElementById('tz-health-dot');
+    if (dot) dot.className = 'dot ' + (!health ? '' : health.status === 'يعمل' ? 'ok' : health.status === 'متوقف' ? 'bad' : 'warn');
+  });
+
+  dash.onData(() => {
+    const svc = dash.data('by_service');
+    const p = dash.params();
+    const svcRows = (svc.status === 'ok' ? svc.data : []).filter((c) => !p.division || c.division === p.division);
+    serviceSel.replaceChildren(new Option(p.division ? `كل خدمات ${p.division}` : 'كل خدمات زين', ''), ...svcRows.map((c) => new Option(`${c.service} (${tzFmt(c.n)})`, c.service)));
+    serviceSel.value = p.service || '';
+    scopeSel.value = p.scope || 'matched';
+    fitSel.value = p.fit || '';
+    prioSel.value = p.priority || '';
+    saleSel.value = p.sale || '';
+    gradeSel.value = p.grade || '';
+    const ours = ((dash.data('status').data || [])[0] || {}).company_grade;
+    if (ours) gradeSel.options[0].textContent = `تقبل درجتنا (${ours})`;
+    if (q !== document.activeElement) q.value = p.q || '';
+    drawTable();
+  });
+</script>
+
+<p class="tz-footer">يُحدَّث يوميًا من بوابة إسناد. الملاءمة تقدير آلي من العنوان العام وليست معلومة مؤكدة.</p>
+</div>
+</body>
+</html>
